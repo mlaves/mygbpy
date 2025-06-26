@@ -201,6 +201,20 @@ class CPU:
         """Check for half carry in addition (carry to bit 4)"""
         return ((a & 0x0F) + (b & 0x0F)) > 0x0F
 
+    def print_registers(self):
+        print(f"AF: {self.af:04X}")
+        print(f"BC: {self.bc:04X}")
+        print(f"DE: {self.de:04X}")
+        print(f"HL: {self.hl:04X}")
+        print(f"SP: {self.sp:04X}")
+        print(f"PC: {self.pc:04X}")
+
+    def print_flags(self):
+        print("Z N H C")
+        print(
+            f"{int(self.f & 0x80 != 0)} {int(self.f & 0x40 != 0)} {int(self.f & 0x20 != 0)} {int(self.f & 0x10 != 0)}"
+        )
+
     # --- 16-bit Register Properties ---
 
     @property
@@ -443,6 +457,30 @@ class CPU:
                 "Decrement the contents of register pair DE by 1.",
                 self.instr_DEC_DE
             ),
+            0x1C: Instruction(
+                "INC E",
+                0x1C,
+                1,
+                1,
+                "Increment the contents of register E by 1.",
+                self.instr_INC_E
+            ),
+            0x1D: Instruction(
+                "DEC E",
+                0x1D,
+                1,
+                1,
+                "Decrement the contents of register E by 1.",
+                self.instr_DEC_E
+            ),
+            0x1E: Instruction(
+                "LD E, d8",
+                0x01E,
+                2,
+                2,
+                "Load the 8-bit immediate operand d8 into register E.",
+                self.instr_LD_E_d8
+            ),
             0x21: Instruction(
                 "LD HL, d16",
                 0x21,
@@ -653,6 +691,23 @@ class CPU:
         # 0x1B
         self.de -= 1
 
+    def instr_INC_E(self):
+        # 0x1C
+        old_value = self.e
+        self.e += 1
+        self._set_flags(zero=self.e == 0, subtract=False, half_carry=self._check_half_carry_add(old_value, 1))
+
+    def instr_DEC_E(self):
+        # 0x1D
+        old_value = self.e
+        self.e -= 1
+        self._set_flags(zero=self.e == 0, subtract=True, half_carry=self._check_half_carry_sub(old_value, 1))
+
+    def instr_LD_E_d8(self):
+        # 0x1E
+        self.e = self.memory[self.pc]
+        self.pc += 1
+
     def instr_LD_HL_d16(self):
         # 0x21
         self.hl = self.memory[self.pc] | (self.memory[self.pc+1] << 8)
@@ -679,17 +734,3 @@ class CPU:
         # 0xC3
         value = self.memory[self.pc] | (self.memory[self.pc+1] << 8)
         self.pc = value
-
-    def print_registers(self):
-        print(f"AF: {self.af:04X}")
-        print(f"BC: {self.bc:04X}")
-        print(f"DE: {self.de:04X}")
-        print(f"HL: {self.hl:04X}")
-        print(f"SP: {self.sp:04X}")
-        print(f"PC: {self.pc:04X}")
-
-    def print_flags(self):
-        print("Z N H C")
-        print(
-            f"{int(self.f & 0x80 != 0)} {int(self.f & 0x40 != 0)} {int(self.f & 0x20 != 0)} {int(self.f & 0x10 != 0)}"
-        )
