@@ -481,6 +481,14 @@ class CPU:
                 "Load the 8-bit immediate operand d8 into register E.",
                 self.instr_LD_E_d8
             ),
+            0x1F: Instruction(
+                "RRA",
+                0x1F,
+                1,
+                1,
+                "",
+                self.instr_RRA
+            ),
             0x21: Instruction(
                 "LD HL, d16",
                 0x21,
@@ -707,6 +715,12 @@ class CPU:
         # 0x1E
         self.e = self.memory[self.pc]
         self.pc += 1
+
+    def instr_RRA(self):
+        # 0x1F
+        old_value = self.a
+        self.a = ((self.a >> 1) | ((self.f & 0x10) << 3)) & 0xFF
+        self._set_flags(zero=False, subtract=False, half_carry=False, carry=(old_value & 0x01) != 0)
 
     def instr_LD_HL_d16(self):
         # 0x21

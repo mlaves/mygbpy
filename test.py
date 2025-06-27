@@ -489,6 +489,84 @@ def test_ld_e_d8():
     assert cpu.e == 0x12, "test_ld_d_d8 failed: incorrect result"
 
 
+def test_rra():
+    # Test case 1: Basic right rotation without carry flag set
+    cpu = setup_cpu_with_instructions([0x1F])  # RRA
+    cpu.a = 0x02  # 00000010
+    cpu.f = 0x00  # No carry flag
+    cpu.step()
+    assert cpu.a == 0x01, "test_rra failed: 0x02 >> 1 should be 0x01"
+    assert cpu.f == 0x00, "test_rra failed: no carry should be generated from bit 0 = 0"
+
+    # Test case 2: Rotation with bit 0 set (should set carry flag)
+    cpu = setup_cpu_with_instructions([0x1F])  # RRA
+    cpu.a = 0x01  # 00000001
+    cpu.f = 0x00  # No carry flag initially
+    cpu.step()
+    assert cpu.a == 0x00, "test_rra failed: 0x01 >> 1 should be 0x00"
+    assert cpu.f == 0x10, "test_rra failed: carry flag should be set from bit 0 = 1"
+
+    # Test case 3: Rotation with carry flag initially set
+    cpu = setup_cpu_with_instructions([0x1F])  # RRA
+    cpu.a = 0x02  # 00000010
+    cpu.f = 0x10  # Carry flag set
+    cpu.step()
+    assert cpu.a == 0x81, "test_rra failed: carry should move to bit 7, giving 10000001"
+    assert cpu.f == 0x00, "test_rra failed: carry flag should be cleared (bit 0 was 0)"
+
+    # Test case 4: Both carry in and carry out
+    cpu = setup_cpu_with_instructions([0x1F])  # RRA
+    cpu.a = 0x03  # 00000011
+    cpu.f = 0x10  # Carry flag set
+    cpu.step()
+    assert cpu.a == 0x81, "test_rra failed: should be 10000001 (carry to bit 7, A>>1)"
+    assert cpu.f == 0x10, "test_rra failed: carry flag should remain set (bit 0 was 1)"
+
+    # Test case 5: All bits set
+    cpu = setup_cpu_with_instructions([0x1F])  # RRA
+    cpu.a = 0xFF  # 11111111
+    cpu.f = 0x00  # No carry flag
+    cpu.step()
+    assert cpu.a == 0x7F, "test_rra failed: 0xFF >> 1 should be 0x7F"
+    assert cpu.f == 0x10, "test_rra failed: carry flag should be set from bit 0 = 1"
+
+    # Test case 6: Zero with carry flag set
+    cpu = setup_cpu_with_instructions([0x1F])  # RRA
+    cpu.a = 0x00  # 00000000
+    cpu.f = 0x10  # Carry flag set
+    cpu.step()
+    assert cpu.a == 0x80, "test_rra failed: carry should move to bit 7, giving 10000000"
+    assert cpu.f == 0x00, "test_rra failed: carry flag should be cleared (bit 0 was 0)"
+
+    # Test case 7: Verify other flags are always cleared
+    cpu = setup_cpu_with_instructions([0x1F])  # RRA
+    cpu.a = 0x42
+    cpu.f = 0xF0  # All flags set initially
+    cpu.step()
+    # Only carry flag should potentially be set, others should be cleared
+    assert (cpu.f & 0xE0) == 0x00, "test_rra failed: Z, N, H flags should always be cleared"
+
+    # Test case 8: Test the rotation chain (multiple rotations)
+    cpu = setup_cpu_with_instructions([0x1F, 0x1F, 0x1F])  # Multiple RRA
+    cpu.a = 0x80  # 10000000
+    cpu.f = 0x00  # No carry initially
+
+    # First rotation: 10000000 -> 01000000, carry = 0
+    cpu.step()
+    assert cpu.a == 0x40, "test_rra failed: first rotation incorrect"
+    assert cpu.f == 0x00, "test_rra failed: first rotation carry incorrect"
+
+    # Second rotation: 01000000 -> 00100000, carry = 0
+    cpu.step()
+    assert cpu.a == 0x20, "test_rra failed: second rotation incorrect"
+    assert cpu.f == 0x00, "test_rra failed: second rotation carry incorrect"
+
+    # Third rotation: 00100000 -> 00010000, carry = 0
+    cpu.step()
+    assert cpu.a == 0x10, "test_rra failed: third rotation incorrect"
+    assert cpu.f == 0x00, "test_rra failed: third rotation carry incorrect"
+
+
 def test_ld_hl_d16():
     cpu = setup_cpu_with_instructions([0x21, 0x34, 0x12])  # LD HL, d16
     cpu.step()
