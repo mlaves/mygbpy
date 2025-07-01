@@ -53,7 +53,11 @@ class CPU:
             opcode, Instruction("not implemented", 0, 0, 0, "", self.instr_unimplemented)
         )
         cycles = instruction.cycles
-        instruction.handler()
+
+        # Execute instruction and check if it returns a custom cycle count
+        result = instruction.handler()
+        if result is not None:
+            cycles = result
 
         return cycles
 
@@ -489,6 +493,14 @@ class CPU:
                 "",
                 self.instr_RRA
             ),
+            0x20: Instruction(
+                "JR NZ, s8",
+                0x20,
+                2,
+                2,
+                "If the Z flag is 0, jump s8 steps from the current address stored in the program counter (PC). If not, the instruction following the current JP instruction is executed.",
+                self.instr_JR_NZ_s8
+            ),
             0x21: Instruction(
                 "LD HL, d16",
                 0x21,
@@ -497,6 +509,14 @@ class CPU:
                 "Load the 2 bytes of immediate data into register pair HL.",
                 self.instr_LD_HL_d16
 
+            ),
+            0x22: Instruction(
+                "LD (HL+), A",
+                0x22,
+                1,
+                2,
+                "Store the contents of register A into the memory location specified by register pair HL, and simultaneously increment the contents of HL.",
+                self.instr_LD_HL_plus_A
             ),
             0x3E: Instruction(
                 "LD A, d8",
@@ -722,10 +742,28 @@ class CPU:
         self.a = ((self.a >> 1) | ((self.f & 0x10) << 3)) & 0xFF
         self._set_flags(zero=False, subtract=False, half_carry=False, carry=(old_value & 0x01) != 0)
 
+    def instr_JR_NZ_s8(self):
+        # 0x20
+        jump_offset = self.memory[self.pc]
+        self.pc += 1  # Move PC past the offset byte
+
+        # Check if Z flag is 0 (not zero)
+        if (self.f & 0x80) == 0:
+            # Convert unsigned offset to signed (two's complement)
+            if jump_offset >= 0x80:  # If bit 7 is set (negative number)
+                jump_offset -= 0x100  # Convert to range [-128, 127]
+            self.pc += jump_offset
+            return 3  # 3 cycles if jump taken
+
     def instr_LD_HL_d16(self):
         # 0x21
         self.hl = self.memory[self.pc] | (self.memory[self.pc+1] << 8)
         self.pc += 2
+
+    def instr_LD_HL_plus_A(self):
+        # 0x22
+        self.memory[self.hl] = self.a
+        self.hl += 1
 
     def instr_LD_B_A(self):
         # 0x47

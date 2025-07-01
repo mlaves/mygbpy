@@ -573,6 +573,23 @@ def test_ld_hl_d16():
     assert cpu.hl == 0x1234, "test_ld_hl_d16: result incorrect"
 
 
+def test_ld_hl_plus_a():
+    cpu = setup_cpu_with_instructions([0x22])  # LD (HL+), A
+    cpu.hl = 0xC000
+    cpu.a = 0xFF
+    cpu.step()
+    assert cpu.memory[0xC000] == 0xFF, "test_ld_hl_plus_a failed: memory not written correctly"
+    assert cpu.hl == 0xC001, "test_ld_hl_plus_a failed: HL not incremented correctly"
+
+    # Test with different values and addresses
+    cpu = setup_cpu_with_instructions([0x22])  # LD (HL+), A
+    cpu.hl = 0xC010
+    cpu.a = 0x42
+    cpu.step()
+    assert cpu.memory[0xC010] == 0x42, "test_ld_hl_plus_a failed: second test memory incorrect"
+    assert cpu.hl == 0xC011, "test_ld_hl_plus_a failed: second test HL increment incorrect"
+
+
 def main():
     import inspect
     import sys
